@@ -1,7 +1,6 @@
 import React from 'react'
 import { StyleSheet, Platform, Image, Text, View, Button } from 'react-native'
 import * as firebase from 'firebase'
-import { socket } from './Socket'
 
 interface Props {
   navigation: any

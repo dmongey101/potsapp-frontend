@@ -36,7 +36,7 @@ export default class CreateRoom extends React.Component<Props, State> {
         })
       })
       socket.emit('join-room', { room: this.state.roomName, player: this.state.currentUser.email })
-      this.props.navigation.navigate('WaitingRoom', { roomName: this.state.roomName })
+      this.props.navigation.navigate('WaitingRoom', { roomName: this.state.roomName, socket: socket })
       
   }
 

@@ -1,11 +1,12 @@
 import React from 'react'
 import { StyleSheet, Modal, TouchableHighlight, Text, TextInput, View, FlatList, Button } from 'react-native'
 import * as firebase from 'firebase';
-import { socket, baseURL } from '../Socket';
+import {  baseURL } from '../Socket';
 
 interface Props {
   route: any,
-  navigation: any
+  navigation: any,
+  socket: any
 }
 
 interface State {
@@ -26,6 +27,7 @@ export default class WaitingRoom extends React.Component<Props, State> {
   componentDidMount() {
     const { currentUser } = firebase.auth()
     const roomName = this.props.navigation.state.params.roomName
+    const socket = this.props.navigation.state.params.socket
     this.setState({ currentUser })
 
     fetch(`${baseURL}/rooms/getPlayers/${roomName}`)
@@ -45,6 +47,7 @@ export default class WaitingRoom extends React.Component<Props, State> {
 
   submitWords = () => {
     const roomName = this.props.navigation.state.params.roomName;
+    const socket = this.props.navigation.state.params.socket
     fetch(`${baseURL}/rooms/submitWords`, {
       method: 'POST',
       headers: {
@@ -66,8 +69,7 @@ export default class WaitingRoom extends React.Component<Props, State> {
     })
 
     socket.on('start-game', () => {
-      console.log('hello')
-      this.props.navigation.navigate('GameRoom', { roomName: roomName })
+      this.props.navigation.navigate('GameRoom', { roomName: roomName, socket: socket })
     })
 
     var i = this.state.players.findIndex(user => user == this.state.currentUser.email)
@@ -80,7 +82,6 @@ export default class WaitingRoom extends React.Component<Props, State> {
   }
 
   componentWillUnmount() {
-    socket.disconnect()
     var i = this.state.players.indexOf(this.state.currentUser)
     if(i !== -1) this.state.players.splice(i, 1)
   }

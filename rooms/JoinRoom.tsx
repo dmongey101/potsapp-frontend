@@ -43,7 +43,7 @@ export default class JoinRoom extends React.Component<Props, State> {
             })
         })
         socket.emit('join-room', { room: roomName, player: this.state.currentUser.email })
-        this.props.navigation.navigate('WaitingRoom', { roomName: roomName})
+        this.props.navigation.navigate('WaitingRoom', { roomName: roomName, socket: socket})
     }
 
 
@@ -55,11 +55,13 @@ return (
             <FlatList
                 style={styles.flatList}
                 data={rooms}
-                keyExtractor={({ id }, index) => id}
                 renderItem={({ item }) => (
-                    <View><Text>{item}</Text><Button title="Join" onPress={() => this.joinRoom(item)} /></View>
-                    
+                    <View>
+                        <Text key={item}>{item}</Text>
+                        <Button title="Join" onPress={() => this.joinRoom(item)} />
+                    </View>
                 )}
+                keyExtractor={ item => item}
             />
         )}
         <Button
