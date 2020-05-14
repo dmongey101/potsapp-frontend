@@ -24,11 +24,13 @@ type State = {
     currentUser: any,
     roomState: Room | any,
     counter: number,
+    currentWord: string,
+    roundStarted: boolean,
     isLoading: boolean
 }
 
 export default class GameRoom extends React.Component<Props, State> {
-  state = { currentUser: null, roomState: null, counter: null, isLoading: true}
+  state = { currentUser: null, roomState: null, counter: null, currentWord: null, roundStarted: false, isLoading: true}
   componentDidMount() {
     const { currentUser } = firebase.auth()
     this.setState({ currentUser })
@@ -43,7 +45,7 @@ export default class GameRoom extends React.Component<Props, State> {
               name: room.name,
               noOfPlayers: parseInt(room.noOfPlayers),
               currentTeam: parseInt(room.currentTeam),
-              currentPlayer: parseInt(room.currentPlayer),
+              currentPlayer: room.currentPlayer,
               currentRound: room.currentRound,
               scores: room.scores,
               pot1: room.pot1,
@@ -58,6 +60,24 @@ export default class GameRoom extends React.Component<Props, State> {
     
       socket.on('counter', counter => {
         this.setState({ counter: counter })
+        if (counter == 0) {
+          socket.emit('next-round', this.state.roomState)
+          this.setState({ roundStarted: false })
+        }
+      })
+
+      socket.on('new-game-state', room => {
+        this.setState({ roomState: {
+          name: room.name,
+          noOfPlayers: parseInt(room.noOfPlayers),
+          currentTeam: parseInt(room.currentTeam),
+          currentPlayer: room.currentPlayer,
+          currentRound: room.currentRound,
+          scores: room.scores,
+          pot1: room.pot1,
+          pot2: room.pot2,
+          teams: room.teams
+        }})
       })
     
 }
@@ -70,7 +90,7 @@ teamView = () => {
       teams.push(
         <View style={styles.mainTeamsView} key={i}>
           <FlatList
-            data={roomState.teams[i.toString()]}
+            data={roomState.teams[i.toString()].players}
             renderItem={({ item, index }) => (
                   <Text>{item.player}</Text>
             )}
@@ -84,30 +104,56 @@ teamView = () => {
 }
 
 currentPlayerView = () => {
-  const { roomState } = this.state
+  const { roomState, roundStarted } = this.state
   if (roomState != null) {
     if (this.state.currentUser.email == this.state.roomState.currentPlayer) {
-      return <Button
-                title="Start"
-                onPress={() => this.start()}
-              />
+      if (!roundStarted) {
+        return <Button
+                  title="Start"
+                  onPress={() => this.start()}
+                />
+      } else {
+        return <Button
+                  title="Next"
+                  onPress={() => this.next()}
+                />
+      }
     }
   }
 }
 
 start() {
   const socket = this.props.navigation.state.params.socket
+  var pot = this.state.roomState.pot1;
+  this.setState({ currentWord: pot[Math.floor(Math.random() * pot.length)]})
+  this.setState({ roundStarted: true})
   socket.emit('start-timer', { room: this.state.roomState.name, player: this.state.currentUser.email })
 }
 
+next() {
+  var i = this.state.roomState.pot1.indexOf(this.state.currentWord)
+  if (i > -1) {
+    this.state.roomState.pot1.splice(i, 1)
+    this.state.roomState.pot2.push(this.state.currentWord)
+  }
+
+  if (this.state.roomState.pot1 == 0) {
+    this.state.roomState.pot1 = this.state.roomState.pot2
+    this.state.roomState.pot2 = []
+  }
+
+  this.setState({ currentWord: this.state.roomState.pot1[Math.floor(Math.random() * this.state.roomState.pot1.length)]})
+}
+
 render() {
-  const { roomState, isLoading, counter } = this.state
+  const { roomState, isLoading, counter, currentWord, roundStarted } = this.state
 
 return  <View style={styles.container}>
           {isLoading ? <ActivityIndicator/> : (
             
           <View style={styles.teams}>
             {this.teamView()}
+            {roundStarted ? <Text>{currentWord}</Text> : (<Text></Text>)}
             {this.currentPlayerView()}
             <Text>{ counter }</Text>
             <Button
