@@ -34,7 +34,7 @@ export default class GameRoom extends React.Component<Props, State> {
   componentDidMount() {
     const { currentUser } = firebase.auth()
     this.setState({ currentUser })
-
+    const { roomState } = this.state
     const room = this.props.navigation.state.params.roomName
     const socket = this.props.navigation.state.params.socket
 
@@ -79,6 +79,10 @@ export default class GameRoom extends React.Component<Props, State> {
           teams: room.teams
         }})
       })
+
+      socket.on('updated-score', data => {
+        this.setState(state => (state.roomState.scores[data.currentTeam - 1][data.currentTeam.toString()] = data.score, state))
+      })
     
 }
 
@@ -89,6 +93,7 @@ teamView = () => {
     for(var i=1; i<=roomState.noOfPlayers; i++) {
       teams.push(
         <View style={styles.mainTeamsView} key={i}>
+          <Text>Team {i} - {roomState.scores[i - 1][i.toString()]}</Text>
           <FlatList
             data={roomState.teams[i.toString()].players}
             renderItem={({ item, index }) => (
@@ -123,26 +128,33 @@ currentPlayerView = () => {
 }
 
 start() {
+  const { roomState }  = this.state
   const socket = this.props.navigation.state.params.socket
-  var pot = this.state.roomState.pot1;
+  var pot = roomState.pot1;
   this.setState({ currentWord: pot[Math.floor(Math.random() * pot.length)]})
   this.setState({ roundStarted: true})
-  socket.emit('start-timer', { room: this.state.roomState.name, player: this.state.currentUser.email })
+  socket.emit('start-timer', { room: roomState.name, player: this.state.currentUser.email })
 }
 
 next() {
-  var i = this.state.roomState.pot1.indexOf(this.state.currentWord)
+  const { roomState } = this.state
+  const socket = this.props.navigation.state.params.socket
+  var i = roomState.pot1.indexOf(this.state.currentWord)
   if (i > -1) {
-    this.state.roomState.pot1.splice(i, 1)
-    this.state.roomState.pot2.push(this.state.currentWord)
+    roomState.pot1.splice(i, 1)
+    roomState.pot2.push(this.state.currentWord)
   }
 
-  if (this.state.roomState.pot1 == 0) {
-    this.state.roomState.pot1 = this.state.roomState.pot2
-    this.state.roomState.pot2 = []
+  if (roomState.pot1 == 0) {
+    roomState.pot1 = roomState.pot2
+    roomState.pot2 = []
   }
 
-  this.setState({ currentWord: this.state.roomState.pot1[Math.floor(Math.random() * this.state.roomState.pot1.length)]})
+
+  var score = roomState.scores[roomState.currentTeam - 1][roomState.currentTeam.toString()] + 1
+
+  socket.emit('inc-score', { score: score, currentTeam: roomState.currentTeam, room: roomState.name })
+  this.setState({ currentWord: roomState.pot1[Math.floor(Math.random() * roomState.pot1.length)]})
 }
 
 render() {
