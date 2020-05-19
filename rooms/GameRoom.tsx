@@ -15,6 +15,7 @@ type Room = {
   currentTeam: number,
   currentRound: string,
   scores: Array<Object>,
+  totalScore: number,
   pot1: Array<string>,
   pot2: Array<string>,
   teams: Object
@@ -48,6 +49,7 @@ export default class GameRoom extends React.Component<Props, State> {
               currentPlayer: room.currentPlayer,
               currentRound: room.currentRound,
               scores: room.scores,
+              totalScore: room.totalScore,
               pot1: room.pot1,
               pot2: room.pot2,
               teams: room.teams
@@ -74,6 +76,7 @@ export default class GameRoom extends React.Component<Props, State> {
           currentPlayer: room.currentPlayer,
           currentRound: room.currentRound,
           scores: room.scores,
+          totalScore: room.totalScore,
           pot1: room.pot1,
           pot2: room.pot2,
           teams: room.teams
@@ -81,7 +84,10 @@ export default class GameRoom extends React.Component<Props, State> {
       })
 
       socket.on('updated-score', data => {
+        console.log(data)
         this.setState(state => (state.roomState.scores[data.currentTeam - 1][data.currentTeam.toString()] = data.score, state))
+        this.setState(state => (state.roomState.totalScore = data.totalScore, state))
+        this.setState(state => (state.roomState.currentRound = data.currentRound, state))
       })
     
 }
@@ -93,13 +99,17 @@ teamView = () => {
     for(var i=1; i<=roomState.noOfPlayers; i++) {
       teams.push(
         <View style={styles.mainTeamsView} key={i}>
-          <Text>Team {i} - {roomState.scores[i - 1][i.toString()]}</Text>
+          <Text>Team {i} - {roomState.scores[i - 1][i.toString()]} </Text>
           <FlatList
             data={roomState.teams[i.toString()].players}
-            renderItem={({ item, index }) => (
-                  <Text>{item.player}</Text>
-            )}
-            keyExtractor={item => item.player}
+            renderItem={({ item, index }) => {
+              if(item.playerEmail == roomState.currentPlayer) {
+                return <Text style={styles.currentPlayer}>{item.player}</Text>
+              } else {
+                return <Text>{item.player}</Text>
+              }
+            }}
+            keyExtractor={item => item.playerEmail}
         />
         </View>
       )
@@ -153,7 +163,7 @@ next() {
 
   var score = roomState.scores[roomState.currentTeam - 1][roomState.currentTeam.toString()] + 1
 
-  socket.emit('inc-score', { score: score, currentTeam: roomState.currentTeam, room: roomState.name })
+  socket.emit('inc-score', { score: score, totalScore: roomState.totalScore, noOfPlayers: roomState.noOfPlayers, currentTeam: roomState.currentTeam, room: roomState.name })
   this.setState({ currentWord: roomState.pot1[Math.floor(Math.random() * roomState.pot1.length)]})
 }
 
@@ -165,13 +175,10 @@ return  <View style={styles.container}>
             
           <View style={styles.teams}>
             {this.teamView()}
-            {roundStarted ? <Text>{currentWord}</Text> : (<Text></Text>)}
             {this.currentPlayerView()}
+            {roundStarted ? <Text>{currentWord}</Text> : (<Text></Text>)}
             <Text>{ counter }</Text>
-            <Button
-              title="Back to rooms"
-              onPress={() => this.props.navigation.navigate('Main')}
-            />
+            <Text>{ roomState.currentRound }</Text>
           </View> 
           
           )}          
@@ -194,5 +201,8 @@ const styles = StyleSheet.create({
   },
   flatList: {
       marginTop: 200
+  },
+  currentPlayer: {
+    color: 'red'
   }
 })
